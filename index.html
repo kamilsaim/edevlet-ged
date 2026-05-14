@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Soyağacı Excel → GEDCOM Dönüştürücü</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --bg: #F4F1EA; --dark: #31463A; --muted: #728378; --teal: #4A788A;
+            --green: #89A38C; --white: #fff; --input-bg: #EAE5D9; --red: #DC2626;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { background: var(--bg); color: var(--dark); min-height: 100vh; padding: 20px; max-width: 1400px; margin: 0 auto; }
+        h1 { font-size: 1.2rem; font-weight: 800; letter-spacing: 1px; color: var(--dark); margin-bottom: 4px; }
+        .subtitle { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+        .card { background: var(--white); border-radius: 16px; padding: 20px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+        .card h2 { font-size: 14px; font-weight: 700; color: var(--dark); margin-bottom: 12px; }
+        .btn { display: inline-flex; align-items: center; gap: 8px; background: var(--teal); color: white; border: none; border-radius: 10px; padding: 11px 18px; font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity 0.2s; white-space: nowrap; }
+        .btn:hover { opacity: 0.85; }
+        .btn.green { background: var(--green); }
+        .btn.red { background: var(--red); }
+        .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; align-items: center; }
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+        th { background: var(--input-bg); text-align: left; padding: 7px 8px; font-weight: 600; color: var(--dark); font-size: 11px; white-space: nowrap; position: sticky; top: 0; z-index: 2; }
+        td { padding: 5px 6px; border-bottom: 1px solid rgba(0,0,0,0.05); vertical-align: middle; }
+        td input, td select { width: 100%; border: 1px solid transparent; border-radius: 5px; background: transparent; padding: 3px 6px; font-size: 12px; color: var(--dark); outline: none; min-width: 70px; }
+        td input:focus, td select:focus { border-color: var(--teal); background: #f8fbfc; }
+        tr:hover td { background: #f8f7f3; }
+        tr.kendisi-row td { background: #EFF6FF; }
+        tr.kendisi-row:hover td { background: #DBEAFE; }
+        .sex-e { background: #DBEAFE; color: #1D4ED8; border-radius: 4px; padding: 2px 6px; font-size: 11px; font-weight: 700; display: inline-block; }
+        .sex-k { background: #FCE7F3; color: #BE185D; border-radius: 4px; padding: 2px 6px; font-size: 11px; font-weight: 700; display: inline-block; }
+        .rel-cell { font-size: 11px; color: var(--muted); max-width: 140px; line-height: 1.3; }
+        .result-box { background: #1e2a1f; color: #a8d5a2; border-radius: 10px; padding: 14px; font-family: monospace; font-size: 11px; white-space: pre; overflow-x: auto; max-height: 300px; overflow-y: auto; margin-top: 12px; }
+        .error { color: var(--red); font-size: 13px; margin-top: 8px; font-weight: 500; }
+        .info-box { background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px; padding: 12px 14px; font-size: 12px; color: #1E40AF; line-height: 1.8; }
+        .step { display: flex; align-items: baseline; gap: 8px; }
+        .step-n { background: var(--teal); color: white; border-radius: 50%; width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; margin-top: 2px; }
+        .stat-row { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 10px; }
+        .stat { background: var(--input-bg); border-radius: 8px; padding: 8px 14px; font-size: 12px; }
+        .stat b { color: var(--teal); font-size: 15px; margin-right: 4px; }
+        .warn { background: #FFFBEB; border: 1px solid #FCD34D; border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #92400E; margin-top: 10px; line-height: 1.6; }
+
+        /* Drop zone */
+        #drop-zone {
+            border: 2.5px dashed var(--green); border-radius: 14px; background: #f6f9f6;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 40px 20px; gap: 12px; cursor: pointer; transition: background 0.2s, border-color 0.2s;
+            text-align: center;
+        }
+        #drop-zone.drag-over { background: #e6f0e6; border-color: var(--teal); }
+        #drop-zone svg { opacity: 0.45; }
+        #drop-zone p { font-size: 14px; color: var(--dark); font-weight: 600; margin: 0; }
+        #drop-zone span { font-size: 12px; color: var(--muted); }
+        #file-input { display: none; }
+        #loaded-name { font-size: 12px; color: var(--green); font-weight: 600; margin-top: 8px; }
+    </style>
+</head>
+<body>
+    <h1>Soyağacı Excel → GEDCOM Dönüştürücü</h1>
+    <p class="subtitle">eDevlet Alt Üst Soy Belgesi Excel dosyasını yükleyin, GEDCOM indirin.</p>
+
+    <div class="card">
+        <h2>Nasıl Kullanılır?</h2>
+        <div class="info-box">
+            <div class="step"><span class="step-n">1</span><span>e-Devlet'ten <strong>Alt Üst Soy Bilgisi Sorgulama</strong> belgesini <strong>Excel (.xlsx)</strong> olarak indirin.</span></div>
+            <div class="step"><span class="step-n">2</span><span>Aşağıdaki alana <strong>sürükleyip bırakın</strong> veya <strong>Dosya Seç</strong> butonuna tıklayın.</span></div>
+            <div class="step"><span class="step-n">3</span><span>Tabloyu inceleyin, yanlış alanları düzeltin.</span></div>
+            <div class="step"><span class="step-n">4</span><span><strong>GEDCOM Oluştur</strong> → <strong>İndir</strong> → Soyağacım uygulamasında <em>Ayarlar → GEDCOM Yükle</em> ile açın.</span></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Excel Dosyası Yükle</h2>
+        <div id="drop-zone" onclick="document.getElementById('file-input').click()"
+             ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.5">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="12" y1="18" x2="12" y2="12"/>
+                <polyline points="9 15 12 12 15 15"/>
+            </svg>
+            <p>Excel dosyasını buraya sürükleyin</p>
+            <span>veya tıklayıp seçin (.xlsx)</span>
+        </div>
+        <input type="file" id="file-input" accept=".xlsx,.xls" onchange="onFileInput(event)">
+        <div id="loaded-name"></div>
+        <div id="parse-error" class="error"></div>
+    </div>
+
+    <div class="card" id="table-card" style="display:none">
+        <h2>Kişiler — Düzenle ve Doğrula</h2>
+        <div class="stat-row" id="stat-row"></div>
+        <p style="margin-top:10px;font-size:13px;color:var(--muted);">Yanlış ayrıştırılmış alanları düzeltin. "Kendisi" satırı mavi ile işaretlidir.</p>
+        <div id="warn-box"></div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>C</th>
+                        <th>Yakınlık</th>
+                        <th>Ad</th>
+                        <th>Soyad</th>
+                        <th>Baba Adı</th>
+                        <th>Ana Adı</th>
+                        <th>Doğum Tarihi</th>
+                        <th>Doğum Yeri</th>
+                        <th>Medeni Hal</th>
+                        <th>Durum</th>
+                        <th>Ölüm Tarihi</th>
+                    </tr>
+                </thead>
+                <tbody id="person-tbody"></tbody>
+            </table>
+        </div>
+        <div class="btn-row" style="margin-top:16px;">
+            <button class="btn green" onclick="buildAndPreviewGedcom()">GEDCOM Oluştur ve Önizle</button>
+            <button class="btn red" onclick="clearAll()">Temizle</button>
+        </div>
+    </div>
+
+    <div class="card" id="gedcom-card" style="display:none">
+        <h2>GEDCOM Çıktısı</h2>
+        <div class="result-box" id="gedcom-output"></div>
+        <div class="btn-row">
+            <button class="btn" onclick="downloadGedcom()">GEDCOM İndir (.ged)</button>
+        </div>
+    </div>
+
+<script>
+/* ─── State ─────────────────────────────────────────────────── */
+let persons = [];
+let gedcomText = '';
+
+/* ─── Drop zone ─────────────────────────────────────────────── */
+function onDragOver(e) { e.preventDefault(); document.getElementById('drop-zone').classList.add('drag-over'); }
+function onDragLeave(e) { document.getElementById('drop-zone').classList.remove('drag-over'); }
+function onDrop(e) {
+    e.preventDefault();
+    document.getElementById('drop-zone').classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+}
+function onFileInput(e) { if (e.target.files[0]) handleFile(e.target.files[0]); }
+
+function handleFile(file) {
+    document.getElementById('parse-error').textContent = '';
+    document.getElementById('loaded-name').textContent = '';
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array', cellDates: true });
+            persons = parseXlsxWorkbook(wb);
+            if (!persons.length) {
+                document.getElementById('parse-error').textContent = 'Hiç kişi bulunamadı. Excel formatı beklenenden farklı olabilir.';
+                return;
+            }
+            document.getElementById('loaded-name').textContent = '✓ ' + file.name + ' — ' + persons.length + ' kişi yüklendi';
+            renderTable();
+            document.getElementById('table-card').style.display = 'block';
+            document.getElementById('gedcom-card').style.display = 'none';
+            document.getElementById('table-card').scrollIntoView({ behavior: 'smooth' });
+        } catch (err) {
+            document.getElementById('parse-error').textContent = 'Dosya okunamadı: ' + err.message;
+            console.error(err);
+        }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+/* ─── Hücre → tarih string ───────────────────────────────────── */
+// cellDates:true ile okunan dosyada Date hücreleri JS Date nesnesi gelir.
+// Metin olarak saklanan tarihler (01/07/1841 gibi) string olarak gelir.
+function cellToDateStr(val) {
+    if (val === null || val === undefined || val === '') return '';
+    if (val instanceof Date) {
+        // Geçersiz tarih kontrolü
+        if (isNaN(val.getTime())) return '';
+        const d = val.getDate();
+        const m = val.getMonth() + 1;  // 0-based
+        const y = val.getFullYear();
+        return `${String(d).padStart(2,'0')}.${String(m).padStart(2,'0')}.${y}`;
+    }
+    return String(val).trim();
+}
+
+/* ─── Excel parser ───────────────────────────────────────────── */
+// Her kişi 3 satır: A=ana veriler, B=tarihler, C=mahalle
+// Sütunlar (0-based): 0=Sıra, 1=C, 2=Yakınlık, 3=Adı, 4=Soyadı, 5=BabaAdı, 6=AnaAdı,
+//   7=DoğumYeri&Tarihi (A=şehir/ilçe, B=doğum tarihi), 8=İl-İlçe-Mahalle (A=İl, B=İlçe, C=Mahalle),
+//   9=CiltHaneBirey, 10=MedeniHali, 11=Durumu (A=Ölüm/Sağ, B=ölüm tarihi veya "-")
+function parseXlsxWorkbook(wb) {
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+    const result = [];
+    let i = 1; // ilk satır başlık
+
+    while (i < data.length) {
+        const rowA = data[i] || [];
+        const siraRaw = String(rowA[0] || '').trim();
+
+        // Satır A değilse geç
+        if (!siraRaw || isNaN(parseInt(siraRaw))) { i++; continue; }
+
+        const rowB = data[i + 1] || [];
+        const rowC = data[i + 2] || [];
+
+        const sira       = parseInt(siraRaw);
+        const cinsiyet   = String(rowA[1] || '').trim().toUpperCase(); // E / K
+        const rel        = String(rowA[2] || '').trim();
+        const adi        = String(rowA[3] || '').trim();
+        const soyadiRaw  = String(rowA[4] || '').trim();
+        const soyadi     = soyadiRaw === '-' ? '' : soyadiRaw;
+        const babaAdiRaw = String(rowA[5] || '').trim();
+        const babaAdi    = babaAdiRaw === '-' ? '' : babaAdiRaw;
+        const anaAdiRaw  = String(rowA[6] || '').trim();
+        const anaAdi     = anaAdiRaw === '-' ? '' : anaAdiRaw;
+
+        // Doğum yeri: col7=doğum ilçesi/şehri (A), col8=İl (A), İlçe (B), Mahalle (C)
+        const dogumSehir = String(rowA[7] || '').trim();                     // YEŞİLHİSAR / MELİKGAZİ
+        const il         = String(rowA[8] || '').replace(/\/$/, '').trim();   // Kayseri
+        const mahalle    = String(rowC[8] || '').trim();                      // KELER MAHALLESİ
+
+        // Tarihler — cellDates:true ile Date nesnesi veya metin string gelebilir
+        const dogumTarihi = cellToDateStr(rowB[7]);   // "01/07/1841" (metin) veya Date(1907,9,24)
+        const olumTarihi  = cellToDateStr(rowB[11]);  // Date veya "-" (vefat tarihi bilinmiyor)
+
+        // Durum ve medeni hal
+        const durumRaw  = String(rowA[11] || '').trim();
+        const medeniRaw = String(rowA[10] || '').trim();
+
+        const status    = /ölüm|olüm|vefat/i.test(durumRaw) ? 'ölüm' : 'sağ';
+        const medeniHal = normMedi(medeniRaw);
+
+        // Doğum yeri metni: Mahalle, Şehir, İl, Türkiye
+        const birthPlace = [mahalle, dogumSehir, il, 'Türkiye']
+            .filter(s => s && s !== '-').join(', ');
+
+        // Ölüm tarihi: '-' ise veya boşsa tarih bilinmiyor ama vefat etmiş
+        const deathDate = (olumTarihi && olumTarihi !== '-') ? olumTarihi : '';
+
+        result.push({
+            sira, cinsiyet, relationship: rel,
+            givn: adi, surn: soyadi,
+            babaAdi, anaAdi,
+            birthDate: dogumTarihi, birthPlace,
+            medeniHal, status, deathDate,
+            diedUnknownDate: status === 'ölüm' && !deathDate,
+        });
+
+        i += 3;
+    }
+    return result;
+}
+
+function normMedi(s) {
+    const l = (s || '').toLowerCase().replace('â','a').replace('ı','i');
+    if (l === 'dul') return 'dul';
+    if (l === 'evli') return 'evli';
+    if (l.startsWith('bek')) return 'bekar';
+    return '';
+}
+
+/* ─── Date helpers ───────────────────────────────────────────── */
+const GED_MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+
+function trDate(s) {
+    if (!s || s === '-') return '';
+    s = String(s).trim();
+    // Hem / hem . ayracını destekle: DD/MM/YYYY veya D.MM.YYYY
+    const m = s.match(/^(\d{1,2})[\/.](\d{1,2})[\/.](\d{4})$/);
+    if (!m) return s;
+    const d = parseInt(m[1]), mo = parseInt(m[2]), y = parseInt(m[3]);
+    
+    // NVI yıl-temelli yer tutucu: gün=1, ay=7, eski yıl → sadece yıl çıkar
+    if (d === 1 && mo === 7 && y < 1960) return String(y);
+    
+    // Soyağacı uygulamanızın okuyabilmesi için sayısal format döndür
+    return `${String(d).padStart(2, '0')}/${String(mo).padStart(2, '0')}/${y}`;
+}
+
+/* ─── Render editable table ──────────────────────────────────── */
+function renderTable() {
+    const tbody = document.getElementById('person-tbody');
+    tbody.innerHTML = '';
+
+    const kendisi = persons.find(p => /kendisi/i.test(p.relationship));
+
+    document.getElementById('stat-row').innerHTML = `
+        <div class="stat"><b>${persons.length}</b> kişi</div>
+        <div class="stat"><b>${persons.filter(p=>p.cinsiyet==='E').length}</b> erkek</div>
+        <div class="stat"><b>${persons.filter(p=>p.cinsiyet==='K').length}</b> kadın</div>
+        <div class="stat"><b>${persons.filter(p=>p.status==='ölüm').length}</b> vefat</div>
+        <div class="stat"><b>${persons.filter(p=>p.status!=='ölüm').length}</b> sağ</div>
+    `;
+
+    const warns = [];
+    if (!kendisi) warns.push('"Kendisi" satırı bulunamadı — aile bağlantıları kurulamayabilir.');
+    const emptyNames = persons.filter(p => !p.givn && !p.surn);
+    if (emptyNames.length) warns.push(`${emptyNames.length} kişinin adı boş — lütfen tablodan düzeltin.`);
+    document.getElementById('warn-box').innerHTML = warns.length
+        ? `<div class="warn">⚠️ ${warns.join('<br>⚠️ ')}</div>` : '';
+
+    persons.forEach((p, idx) => {
+        const isKendisi = /kendisi/i.test(p.relationship);
+        const tr = document.createElement('tr');
+        if (isKendisi) tr.className = 'kendisi-row';
+        tr.innerHTML = `
+            <td style="font-size:11px;color:var(--muted);white-space:nowrap">${p.sira}</td>
+            <td><span class="sex-${p.cinsiyet==='E'?'e':'k'}">${p.cinsiyet}</span></td>
+            <td class="rel-cell">${p.relationship || '-'}</td>
+            <td><input data-i="${idx}" data-f="givn"       value="${esc(p.givn)}"></td>
+            <td><input data-i="${idx}" data-f="surn"       value="${esc(p.surn)}"></td>
+            <td><input data-i="${idx}" data-f="babaAdi"    value="${esc(p.babaAdi)}"></td>
+            <td><input data-i="${idx}" data-f="anaAdi"     value="${esc(p.anaAdi)}"></td>
+            <td><input data-i="${idx}" data-f="birthDate"  value="${esc(p.birthDate)}" style="min-width:90px"></td>
+            <td><input data-i="${idx}" data-f="birthPlace" value="${esc(p.birthPlace)}" style="min-width:140px"></td>
+            <td>
+                <select data-i="${idx}" data-f="medeniHal" style="min-width:65px">
+                    <option value=""${!p.medeniHal?' selected':''}>-</option>
+                    <option value="evli"${p.medeniHal==='evli'?' selected':''}>Evli</option>
+                    <option value="dul"${p.medeniHal==='dul'?' selected':''}>Dul</option>
+                    <option value="bekar"${p.medeniHal==='bekar'?' selected':''}>Bekâr</option>
+                </select>
+            </td>
+            <td style="white-space:nowrap;font-size:11px">${p.status==='sağ'?'🟢 Sağ':'⚫ Ölüm'}</td>
+            <td><input data-i="${idx}" data-f="deathDate"  value="${esc(p.deathDate)}" style="min-width:90px"></td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    tbody.querySelectorAll('input, select').forEach(el => {
+        el.addEventListener('change', () => {
+            persons[+el.dataset.i][el.dataset.f] = el.value;
+        });
+    });
+}
+
+function esc(s) { return (s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;'); }
+
+/* ─── Relationship path parser ───────────────────────────────── */
+function parseRel(rel) {
+    const s = (rel || '').toLowerCase()
+        .replace(/babasının/g, 'BABA ')
+        .replace(/annesinin/g, 'ANNE ')
+        .replace(/babası$/i,  'BABASI')
+        .replace(/annesi$/i,  'ANNESI')
+        .replace(/kendisi/i,  'KENDISI')
+        .replace(/oğlu/i,     'OGLU')
+        .replace(/kızı/i,     'KIZI')
+        .replace(/eşi/i,      'ESI')
+        .trim();
+    const toks = s.split(/\s+/);
+    const path = [];
+    let finalRole = '';
+    for (const t of toks) {
+        if (t === 'BABA') path.push('baba');
+        else if (t === 'ANNE') path.push('anne');
+        else if (['BABASI','ANNESI','KENDISI','OGLU','KIZI','ESI'].includes(t)) finalRole = t.toLowerCase();
+    }
+    return { path, finalRole };
+}
+
+/* ─── GEDCOM builder ─────────────────────────────────────────── */
+function buildAndPreviewGedcom() {
+    gedcomText = buildGedcom();
+    if (!gedcomText) return;
+    document.getElementById('gedcom-output').textContent = gedcomText;
+    document.getElementById('gedcom-card').style.display = 'block';
+    document.getElementById('gedcom-card').scrollIntoView({ behavior: 'smooth' });
+}
+
+function buildGedcom() {
+    const kendiIdx = persons.findIndex(p => /kendisi/i.test(p.relationship));
+    if (kendiIdx === -1) {
+        document.getElementById('parse-error').textContent = '"Kendisi" satırı bulunamadı.';
+        document.getElementById('table-card').scrollIntoView({ behavior: 'smooth' });
+        return '';
+    }
+
+    const iId = (sira) => `@I${String(sira).padStart(3,'0')}@`;
+
+    const families = {};
+    const famc = {};
+    const fams = {};
+
+    function ensureFam(key) {
+        if (!families[key]) families[key] = { husb: '', wife: '', chil: new Set() };
+        return families[key];
+    }
+    function addFams(sira, key) {
+        if (!fams[sira]) fams[sira] = new Set();
+        fams[sira].add(key);
+    }
+
+    const kendi = persons[kendiIdx];
+
+    persons.forEach(p => {
+        const { path, finalRole } = parseRel(p.relationship);
+
+        if (finalRole === 'kendisi') {
+            const famKey = 'famc_kendi';
+            famc[p.sira] = famKey;
+            ensureFam(famKey).chil.add(iId(p.sira));
+            return;
+        }
+
+        if (finalRole === 'oglu' || finalRole === 'kizi') {
+            const famKey = 'fams_kendi';
+            famc[p.sira] = famKey;
+            ensureFam(famKey).chil.add(iId(p.sira));
+            const fam = ensureFam(famKey);
+            if (kendi.cinsiyet === 'E') fam.husb = iId(kendi.sira);
+            else fam.wife = iId(kendi.sira);
+            addFams(kendi.sira, famKey);
+            return;
+        }
+
+        if (finalRole === 'esi') {
+            const famKey = 'fams_kendi';
+            const fam = ensureFam(famKey);
+            if (p.cinsiyet === 'E') fam.husb = iId(p.sira);
+            else fam.wife = iId(p.sira);
+            addFams(p.sira, famKey);
+            return;
+        }
+
+        if (finalRole === 'babasi' || finalRole === 'annesi') {
+            const famKey = path.join('-') || 'famc_kendi';
+            const fam = ensureFam(famKey);
+            if (finalRole === 'babasi') fam.husb = iId(p.sira);
+            else fam.wife = iId(p.sira);
+            addFams(p.sira, famKey);
+
+            const myFamcKey = [...path, finalRole].join('_');
+            famc[p.sira] = myFamcKey;
+            ensureFam(myFamcKey).chil.add(iId(p.sira));
+        }
+    });
+
+    // Ghost parents (Baba/Ana Adı var ama belgede kişi yok)
+    let indGed = '';
+    let ghostCounter = 500;
+    const ghostIds = {};
+
+    function getOrCreateGhost(name, sex, famKey, role) {
+        const key = `${name}:${sex}:${famKey}`;
+        if (ghostIds[key]) return ghostIds[key];
+        const gId = `@I${ghostCounter++}@`;
+        ghostIds[key] = gId;
+        const gFam = ensureFam(famKey);
+        if (role === 'husb') gFam.husb = gId;
+        else gFam.wife = gId;
+        indGed += `0 ${gId} INDI\n1 NAME ${name} //\n2 GIVN ${name}\n1 SEX ${sex}\n1 NOTE eDevlet Baba/Ana Adı kaydından — tam bilgisi belgede yok.\n1 FAMS ${famGedId[famKey]}\n`;
+        return gId;
+    }
+
+    // Ebeveyn adı olan ama famc bağlantısı kurulmamış kişiler (örn. eş) için köken ailesi oluştur
+    persons.forEach(p => {
+        if (famc[p.sira] === undefined && (p.babaAdi || p.anaAdi)) {
+            const originKey = `origin_${p.sira}`;
+            famc[p.sira] = originKey;
+            ensureFam(originKey).chil.add(iId(p.sira));
+        }
+    });
+
+    // GEDCOM aile ID'leri
+    const famGedId = {};
+    let famCounter = 1;
+    Object.keys(families).forEach(k => { famGedId[k] = `@F${famCounter++}@`; });
+
+    // Bireyler
+    persons.forEach(p => {
+        const id = iId(p.sira);
+        const name = `${p.givn}${p.surn ? ' /' + p.surn + '/' : ' //'}`;
+        indGed += `0 ${id} INDI\n`;
+        indGed += `1 NAME ${name}\n`;
+        if (p.givn) indGed += `2 GIVN ${p.givn}\n`;
+        if (p.surn) indGed += `2 SURN ${p.surn}\n`;
+        indGed += `1 SEX ${p.cinsiyet === 'E' ? 'M' : 'F'}\n`;
+
+        const bd = trDate(p.birthDate);
+        if (bd || p.birthPlace) {
+            indGed += `1 BIRT\n`;
+            if (bd) indGed += `2 DATE ${bd}\n`;
+            if (p.birthPlace) indGed += `2 PLAC ${p.birthPlace}\n`;
+        }
+
+        if (p.status === 'ölüm') {
+            const dd = trDate(p.deathDate);
+            if (dd) {
+                indGed += `1 DEAT\n2 DATE ${dd}\n`;
+            } else {
+                indGed += `1 DEAT Y\n`;   // tarih bilinmiyor ama vefat etmiş
+            }
+        }
+
+        if (p.medeniHal) indGed += `1 _MSTAT ${p.medeniHal}\n`;
+
+        const myFamcKey = famc[p.sira];
+        if (myFamcKey && famGedId[myFamcKey]) {
+            indGed += `1 FAMC ${famGedId[myFamcKey]}\n`;
+            const fam = families[myFamcKey];
+            if (p.babaAdi && !fam.husb) getOrCreateGhost(p.babaAdi, 'M', myFamcKey, 'husb');
+            if (p.anaAdi  && !fam.wife) getOrCreateGhost(p.anaAdi,  'F', myFamcKey, 'wife');
+        }
+
+        if (fams[p.sira]) {
+            fams[p.sira].forEach(fk => {
+                if (famGedId[fk]) indGed += `1 FAMS ${famGedId[fk]}\n`;
+            });
+        }
+    });
+
+    // Aileler
+    let famGed = '';
+    Object.entries(families).forEach(([key, fam]) => {
+        if (!famGedId[key]) return;
+        if (!fam.husb && !fam.wife && fam.chil.size === 0) return;
+        famGed += `0 ${famGedId[key]} FAM\n`;
+        if (fam.husb) famGed += `1 HUSB ${fam.husb}\n`;
+        if (fam.wife) famGed += `1 WIFE ${fam.wife}\n`;
+        fam.chil.forEach(c => { famGed += `1 CHIL ${c}\n`; });
+    });
+
+    const today = new Date();
+    const dateStr = `${today.getDate()} ${GED_MONTHS[today.getMonth()]} ${today.getFullYear()}`;
+    const note = 'eDevlet NVI Alt-Üst Soy Belgesi. 01/07/YYYY doğum tarihleri yıl-bilgisi tabanlıdır.';
+    return `0 HEAD\n1 SOUR eDevlet-XLSX-Donusturucu\n2 NAME Alt-Ust Soy Belgesi\n1 DATE ${dateStr}\n1 GEDC\n2 VERS 5.5.1\n1 CHAR UTF-8\n1 NOTE ${note}\n`
+         + indGed + famGed + '0 TRLR\n';
+}
+
+function downloadGedcom() {
+    if (!gedcomText) return;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([gedcomText], { type: 'text/plain;charset=utf-8' }));
+    a.download = 'edevlet-soy.ged';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+function clearAll() {
+    document.getElementById('loaded-name').textContent = '';
+    document.getElementById('parse-error').textContent = '';
+    document.getElementById('file-input').value = '';
+    document.getElementById('table-card').style.display = 'none';
+    document.getElementById('gedcom-card').style.display = 'none';
+    persons = []; gedcomText = '';
+}
+</script>
+</body>
+</html>
