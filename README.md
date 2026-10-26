@@ -37,7 +37,7 @@ Bu araç o tabloyu okuyup aile bağlarını kurar ve **GEDCOM (.ged)** dosyası 
 | **2** | Tabloyu **"Sıra"** başlığından son kişiye kadar fareyle seçip kopyalayın (Ctrl+C) |
 | **3** | [Dönüştürücüyü açın](https://kamilsaim.github.io/edevlet-ged/) ve yapıştırma alanına yapıştırın (Ctrl+V) |
 | **4** | Tabloyu ve uyarıları kontrol edin → **GEDCOM Oluştur** → **İndir** |
-| **5** | `.ged` dosyasını Soy Ağacı uygulamasında **GED Yükle** ile açın |
+| **5** | `.ged` dosyasını Soy Ağacı uygulamasında **Bilgi → Veri İşlemleri → GED Dosyası Yükle** ile açın |
 
 > Tabloyu önce Excel'e ya da Word'e yapıştırıp kaydettiyseniz, o **.xlsx** veya **.docx** dosyasını da doğrudan yükleyebilirsiniz.
 
