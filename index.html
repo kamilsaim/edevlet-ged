@@ -3,18 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Soyağacı Excel → GEDCOM Dönüştürücü</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>e-Devlet Soyağacı → GEDCOM</title>
+    <link rel="icon" type="image/png" href="logo.png">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
     <style>
         :root {
             --bg: #F4F1EA; --dark: #31463A; --muted: #728378; --teal: #4A788A;
-            --green: #89A38C; --white: #fff; --input-bg: #EAE5D9; --red: #DC2626;
+            --green: #89A38C; --white: #fff; --input-bg: #EAE5D9; --red: #DC2626; --amber: #92400E;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
-        body { background: var(--bg); color: var(--dark); min-height: 100vh; padding: 20px; max-width: 1400px; margin: 0 auto; }
-        h1 { font-size: 1.2rem; font-weight: 800; letter-spacing: 1px; color: var(--dark); margin-bottom: 4px; }
-        .subtitle { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+        body { background: var(--bg); color: var(--dark); min-height: 100vh; padding: 20px 16px; max-width: 1400px; margin: 0 auto; }
+        header { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+        header img { width: 56px; height: 56px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+        h1 { font-size: 1.25rem; font-weight: 800; color: var(--dark); }
+        .subtitle { font-size: 13px; color: var(--muted); margin-top: 2px; }
         .card { background: var(--white); border-radius: 16px; padding: 20px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
         .card h2 { font-size: 14px; font-weight: 700; color: var(--dark); margin-bottom: 12px; }
         .btn { display: inline-flex; align-items: center; gap: 8px; background: var(--teal); color: white; border: none; border-radius: 10px; padding: 11px 18px; font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity 0.2s; white-space: nowrap; }
@@ -22,7 +25,7 @@
         .btn.green { background: var(--green); }
         .btn.red { background: var(--red); }
         .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; align-items: center; }
-        .table-wrap { overflow-x: auto; }
+        .table-wrap { overflow-x: auto; max-height: 70vh; }
         table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
         th { background: var(--input-bg); text-align: left; padding: 7px 8px; font-weight: 600; color: var(--dark); font-size: 11px; white-space: nowrap; position: sticky; top: 0; z-index: 2; }
         td { padding: 5px 6px; border-bottom: 1px solid rgba(0,0,0,0.05); vertical-align: middle; }
@@ -30,88 +33,98 @@
         td input:focus, td select:focus { border-color: var(--teal); background: #f8fbfc; }
         tr:hover td { background: #f8f7f3; }
         tr.kendisi-row td { background: #EFF6FF; }
-        tr.kendisi-row:hover td { background: #DBEAFE; }
         .sex-e { background: #DBEAFE; color: #1D4ED8; border-radius: 4px; padding: 2px 6px; font-size: 11px; font-weight: 700; display: inline-block; }
         .sex-k { background: #FCE7F3; color: #BE185D; border-radius: 4px; padding: 2px 6px; font-size: 11px; font-weight: 700; display: inline-block; }
-        .rel-cell { font-size: 11px; color: var(--muted); max-width: 140px; line-height: 1.3; }
-        .result-box { background: #1e2a1f; color: #a8d5a2; border-radius: 10px; padding: 14px; font-family: monospace; font-size: 11px; white-space: pre; overflow-x: auto; max-height: 300px; overflow-y: auto; margin-top: 12px; }
+        .rel-cell { font-size: 11px; color: var(--muted); max-width: 150px; line-height: 1.3; }
+        .kutuk { font-size: 10.5px; color: var(--muted); white-space: nowrap; }
+        .result-box { background: #1e2a1f; color: #a8d5a2; border-radius: 10px; padding: 14px; font-family: monospace; font-size: 11px; white-space: pre; overflow-x: auto; max-height: 320px; overflow-y: auto; margin-top: 12px; }
         .error { color: var(--red); font-size: 13px; margin-top: 8px; font-weight: 500; }
-        .info-box { background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px; padding: 12px 14px; font-size: 12px; color: #1E40AF; line-height: 1.8; }
+        .info-box { background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px; padding: 12px 14px; font-size: 12.5px; color: #1E40AF; line-height: 1.8; }
         .step { display: flex; align-items: baseline; gap: 8px; }
         .step-n { background: var(--teal); color: white; border-radius: 50%; width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; margin-top: 2px; }
-        .stat-row { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 10px; }
+        .stat-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
         .stat { background: var(--input-bg); border-radius: 8px; padding: 8px 14px; font-size: 12px; }
         .stat b { color: var(--teal); font-size: 15px; margin-right: 4px; }
-        .warn { background: #FFFBEB; border: 1px solid #FCD34D; border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #92400E; margin-top: 10px; line-height: 1.6; }
-
-        /* Drop zone */
+        .warn { background: #FFFBEB; border: 1px solid #FCD34D; border-radius: 8px; padding: 10px 14px; font-size: 12px; color: var(--amber); margin-top: 10px; line-height: 1.7; }
+        .ok { background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #166534; margin-top: 10px; }
+        .opts { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; font-size: 12.5px; }
+        .opts label { display: flex; gap: 8px; align-items: center; cursor: pointer; }
+        .inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        @media (max-width: 760px) { .inputs { grid-template-columns: 1fr; } }
         #drop-zone {
             border: 2.5px dashed var(--green); border-radius: 14px; background: #f6f9f6;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            padding: 40px 20px; gap: 12px; cursor: pointer; transition: background 0.2s, border-color 0.2s;
-            text-align: center;
+            padding: 30px 16px; gap: 10px; cursor: pointer; transition: background 0.2s, border-color 0.2s; text-align: center; min-height: 170px;
         }
         #drop-zone.drag-over { background: #e6f0e6; border-color: var(--teal); }
-        #drop-zone svg { opacity: 0.45; }
-        #drop-zone p { font-size: 14px; color: var(--dark); font-weight: 600; margin: 0; }
-        #drop-zone span { font-size: 12px; color: var(--muted); }
+        #drop-zone p, #paste-zone p { font-size: 14px; color: var(--dark); font-weight: 600; margin: 0; }
+        #drop-zone span, #paste-zone span { font-size: 12px; color: var(--muted); }
+        #paste-zone { border: 2.5px dashed #9BB8C4; border-radius: 14px; background: #f5f9fb; padding: 30px 16px; text-align: center; min-height: 170px; display: flex; flex-direction: column; justify-content: center; gap: 10px; outline: none; cursor: text; }
+        #paste-zone:focus { border-color: var(--teal); background: #eef6f9; }
         #file-input { display: none; }
-        #loaded-name { font-size: 12px; color: var(--green); font-weight: 600; margin-top: 8px; }
+        #loaded-name { font-size: 12px; color: var(--green); font-weight: 600; margin-top: 10px; }
+        footer { text-align: center; font-size: 11.5px; color: var(--muted); margin: 24px 0 10px; line-height: 1.7; }
+        footer a { color: var(--teal); }
     </style>
 </head>
 <body>
-    <h1>Soyağacı Excel → GEDCOM Dönüştürücü</h1>
-    <p class="subtitle">eDevlet Alt Üst Soy Belgesi Excel dosyasını yükleyin, GEDCOM indirin.</p>
+    <header>
+        <img src="logo.png" alt="">
+        <div>
+            <h1>e-Devlet Soyağacı → GEDCOM</h1>
+            <p class="subtitle">Alt-Üst Soy Bilgisi belgenizi tüm soy ağacı programlarının açabildiği GEDCOM (.ged) dosyasına dönüştürür.</p>
+        </div>
+    </header>
 
     <div class="card">
-        <h2>Nasıl Kullanılır?</h2>
+        <h2>Nasıl kullanılır?</h2>
         <div class="info-box">
-            <div class="step"><span class="step-n">1</span><span>e-Devlet'ten <strong>Alt Üst Soy Bilgisi Sorgulama</strong> belgesini <strong>Excel (.xlsx)</strong> olarak indirin.</span></div>
-            <div class="step"><span class="step-n">2</span><span>Aşağıdaki alana <strong>sürükleyip bırakın</strong> veya <strong>Dosya Seç</strong> butonuna tıklayın.</span></div>
-            <div class="step"><span class="step-n">3</span><span>Tabloyu inceleyin, yanlış alanları düzeltin.</span></div>
-            <div class="step"><span class="step-n">4</span><span><strong>GEDCOM Oluştur</strong> → <strong>İndir</strong> → Soyağacım uygulamasında <em>Ayarlar → GEDCOM Yükle</em> ile açın.</span></div>
+            <div class="step"><span class="step-n">1</span><span>e-Devlet'te <strong>Nüfus ve Vatandaşlık İşleri → Alt-Üst Soy Bilgisi Sorgulama</strong> ekranını açın.</span></div>
+            <div class="step"><span class="step-n">2</span><span>Tabloyu <strong>"Sıra"</strong> başlığından son kişiye kadar fareyle seçip kopyalayın (Ctrl+C) ve aşağıdaki <strong>yapıştırma alanına</strong> yapıştırın (Ctrl+V). <br>Ya da tabloyu Excel'e / Word'e yapıştırıp kaydettiğiniz <strong>.xlsx</strong> veya <strong>.docx</strong> dosyasını yükleyin.</span></div>
+            <div class="step"><span class="step-n">3</span><span>Tabloyu ve uyarıları kontrol edin, gerekirse düzeltin.</span></div>
+            <div class="step"><span class="step-n">4</span><span><strong>GEDCOM Oluştur → İndir</strong>. Dosyayı <a href="https://kamilsaim.github.io/soyagaci/">Soy Ağacı</a> uygulamasında <em>GED Yükle</em> ile ya da MyHeritage, Ancestry, Gramps gibi programlarda açın.</span></div>
         </div>
+        <p style="font-size:11.5px;color:var(--muted);margin-top:10px">🔒 Her şey tarayıcınızda işlenir; bilgileriniz hiçbir sunucuya gönderilmez.</p>
     </div>
 
     <div class="card">
-        <h2>Excel Dosyası Yükle</h2>
-        <div id="drop-zone" onclick="document.getElementById('file-input').click()"
-             ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.5">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                <polyline points="14 2 14 8 20 8"/>
-                <line x1="12" y1="18" x2="12" y2="12"/>
-                <polyline points="9 15 12 12 15 15"/>
-            </svg>
-            <p>Excel dosyasını buraya sürükleyin</p>
-            <span>veya tıklayıp seçin (.xlsx)</span>
+        <h2>Belgeyi yükleyin</h2>
+        <div class="inputs">
+            <div id="paste-zone" contenteditable="true" onpaste="onPaste(event)" oninput="this.innerHTML=''">
+                <p>📋 e-Devlet tablosunu buraya yapıştırın</p>
+                <span>Tıklayın ve Ctrl+V (telefonda: basılı tut → Yapıştır)</span>
+            </div>
+            <div id="drop-zone" onclick="document.getElementById('file-input').click()"
+                 ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+                <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.5" style="opacity:.5">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                    <line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/>
+                </svg>
+                <p>📂 Excel veya Word dosyası</p>
+                <span>Sürükleyip bırakın ya da tıklayıp seçin (.xlsx, .docx)</span>
+            </div>
         </div>
-        <input type="file" id="file-input" accept=".xlsx,.xls" onchange="onFileInput(event)">
+        <input type="file" id="file-input" accept=".xlsx,.xls,.docx" onchange="onFileInput(event)">
         <div id="loaded-name"></div>
         <div id="parse-error" class="error"></div>
     </div>
 
     <div class="card" id="table-card" style="display:none">
-        <h2>Kişiler — Düzenle ve Doğrula</h2>
+        <h2>Kişiler — kontrol edin ve gerekirse düzeltin</h2>
         <div class="stat-row" id="stat-row"></div>
-        <p style="margin-top:10px;font-size:13px;color:var(--muted);">Yanlış ayrıştırılmış alanları düzeltin. "Kendisi" satırı mavi ile işaretlidir.</p>
         <div id="warn-box"></div>
-        <div class="table-wrap">
+        <div class="opts">
+            <label><input type="checkbox" id="o-case" checked> İsimleri düzelt (HACI MEHMET → Hacı Mehmet)</label>
+            <label><input type="checkbox" id="o-ghost" checked> Belgede yalnızca adı geçen anne-babaları da ekle (bir kuşak daha)</label>
+            <label><input type="checkbox" id="o-maiden" checked> Kadınların kızlık soyadını babasının soyadından bul</label>
+            <label><input type="checkbox" id="o-note" checked> Nüfus kaydı (il/ilçe/mahalle, cilt-hane-birey) ve medeni hâli nota yaz</label>
+        </div>
+        <div class="table-wrap" style="margin-top:12px">
             <table>
                 <thead>
                     <tr>
-                        <th>#</th>
-                        <th>C</th>
-                        <th>Yakınlık</th>
-                        <th>Ad</th>
-                        <th>Soyad</th>
-                        <th>Baba Adı</th>
-                        <th>Ana Adı</th>
-                        <th>Doğum Tarihi</th>
-                        <th>Doğum Yeri</th>
-                        <th>Medeni Hal</th>
-                        <th>Durum</th>
-                        <th>Ölüm Tarihi</th>
+                        <th>#</th><th>C</th><th>Yakınlık</th><th>Ad</th><th>Soyad</th><th>Baba Adı</th><th>Ana Adı</th>
+                        <th>Doğum Tarihi</th><th>Doğum Yeri</th><th>Nüfus Kaydı</th><th>Medeni Hal</th><th>Durum</th><th>Ölüm Tarihi</th>
                     </tr>
                 </thead>
                 <tbody id="person-tbody"></tbody>
@@ -124,249 +137,376 @@
     </div>
 
     <div class="card" id="gedcom-card" style="display:none">
-        <h2>GEDCOM Çıktısı</h2>
+        <h2>GEDCOM çıktısı</h2>
+        <div class="stat-row" id="ged-stats"></div>
         <div class="result-box" id="gedcom-output"></div>
         <div class="btn-row">
-            <button class="btn" onclick="downloadGedcom()">GEDCOM İndir (.ged)</button>
+            <button class="btn" onclick="downloadGedcom()">⬇️ GEDCOM İndir (.ged)</button>
+            <a class="btn green" href="https://kamilsaim.github.io/soyagaci/" target="_blank" rel="noopener" style="text-decoration:none">🌳 Soy Ağacı uygulamasını aç</a>
         </div>
     </div>
 
+    <footer>
+        Açık kaynak · <a href="https://github.com/kamilsaim/edevlet-ged">github.com/kamilsaim/edevlet-ged</a><br>
+        e-Devlet ve NVİ ile resmî bir bağlantısı yoktur; belgenin kişisel kullanım için dönüştürülmesine yardımcı olur.
+    </footer>
+
 <script>
-/* ─── State ─────────────────────────────────────────────────── */
+/* ─── Durum ─────────────────────────────────────────────────── */
 let persons = [];
 let gedcomText = '';
+const TR = 'tr-TR';
 
-/* ─── Drop zone ─────────────────────────────────────────────── */
+/* ─── Girdi: yapıştır / sürükle / dosya ─────────────────────── */
 function onDragOver(e) { e.preventDefault(); document.getElementById('drop-zone').classList.add('drag-over'); }
-function onDragLeave(e) { document.getElementById('drop-zone').classList.remove('drag-over'); }
+function onDragLeave() { document.getElementById('drop-zone').classList.remove('drag-over'); }
 function onDrop(e) {
-    e.preventDefault();
-    document.getElementById('drop-zone').classList.remove('drag-over');
+    e.preventDefault(); onDragLeave();
     const file = e.dataTransfer.files[0];
     if (file) handleFile(file);
 }
-function onFileInput(e) { if (e.target.files[0]) handleFile(e.target.files[0]); }
+function onFileInput(e) { if (e.target.files[0]) handleFile(e.target.files[0]); e.target.value = ''; }
 
-function handleFile(file) {
-    document.getElementById('parse-error').textContent = '';
-    document.getElementById('loaded-name').textContent = '';
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        try {
-            const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array', cellDates: true });
-            persons = parseXlsxWorkbook(wb);
-            if (!persons.length) {
-                document.getElementById('parse-error').textContent = 'Hiç kişi bulunamadı. Excel formatı beklenenden farklı olabilir.';
-                return;
-            }
-            document.getElementById('loaded-name').textContent = '✓ ' + file.name + ' — ' + persons.length + ' kişi yüklendi';
-            renderTable();
-            document.getElementById('table-card').style.display = 'block';
-            document.getElementById('gedcom-card').style.display = 'none';
-            document.getElementById('table-card').scrollIntoView({ behavior: 'smooth' });
-        } catch (err) {
-            document.getElementById('parse-error').textContent = 'Dosya okunamadı: ' + err.message;
-            console.error(err);
+function onPaste(e) {
+    e.preventDefault();
+    const html = e.clipboardData.getData('text/html');
+    const text = e.clipboardData.getData('text/plain');
+    let grid = null;
+    if (html && /<table/i.test(html)) {
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        const tables = [...doc.querySelectorAll('table')];
+        // En çok satırı olan tablo e-Devlet tablosudur
+        tables.sort((a, b) => b.rows.length - a.rows.length);
+        if (tables[0]) grid = tableToGrid(tables[0]);
+    } else if (text && text.includes('\t')) {
+        grid = text.split(/\r?\n/).map(l => l.split('\t'));
+    }
+    loadGrid(grid, 'Yapıştırılan tablo');
+}
+
+async function handleFile(file) {
+    setMsg('', '');
+    try {
+        const buf = new Uint8Array(await file.arrayBuffer());
+        let grid;
+        if (/\.docx$/i.test(file.name)) grid = docxToGrid(await unzipEntry(buf, 'word/document.xml'));
+        else {
+            const wb = XLSX.read(buf, { type: 'array', cellDates: true });
+            grid = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '' })
+                .map(r => r.map(cellToStr));
         }
-    };
-    reader.readAsArrayBuffer(file);
-}
-
-/* ─── Hücre → tarih string ───────────────────────────────────── */
-// cellDates:true ile okunan dosyada Date hücreleri JS Date nesnesi gelir.
-// Metin olarak saklanan tarihler (01/07/1841 gibi) string olarak gelir.
-function cellToDateStr(val) {
-    if (val === null || val === undefined || val === '') return '';
-    if (val instanceof Date) {
-        // Geçersiz tarih kontrolü
-        if (isNaN(val.getTime())) return '';
-        const d = val.getDate();
-        const m = val.getMonth() + 1;  // 0-based
-        const y = val.getFullYear();
-        return `${String(d).padStart(2,'0')}.${String(m).padStart(2,'0')}.${y}`;
+        loadGrid(grid, file.name);
+    } catch (err) {
+        console.error(err);
+        setMsg('', 'Dosya okunamadı: ' + err.message);
     }
-    return String(val).trim();
 }
 
-/* ─── Excel parser ───────────────────────────────────────────── */
-// Her kişi 3 satır: A=ana veriler, B=tarihler, C=mahalle
-// Sütunlar (0-based): 0=Sıra, 1=C, 2=Yakınlık, 3=Adı, 4=Soyadı, 5=BabaAdı, 6=AnaAdı,
-//   7=DoğumYeri&Tarihi (A=şehir/ilçe, B=doğum tarihi), 8=İl-İlçe-Mahalle (A=İl, B=İlçe, C=Mahalle),
-//   9=CiltHaneBirey, 10=MedeniHali, 11=Durumu (A=Ölüm/Sağ, B=ölüm tarihi veya "-")
-function parseXlsxWorkbook(wb) {
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+function setMsg(ok, err) {
+    document.getElementById('loaded-name').textContent = ok;
+    document.getElementById('parse-error').textContent = err;
+}
 
-    const result = [];
-    let i = 1; // ilk satır başlık
+function loadGrid(grid, label) {
+    persons = grid ? gridToPersons(grid) : [];
+    if (!persons.length) {
+        setMsg('', 'Kişi bulunamadı. Tabloyu "Sıra" başlığından itibaren seçip kopyaladığınızdan emin olun ya da Excel/Word dosyası olarak yükleyin.');
+        return;
+    }
+    setMsg('✓ ' + label + ' — ' + persons.length + ' kişi okundu', '');
+    renderTable();
+    document.getElementById('table-card').style.display = 'block';
+    document.getElementById('gedcom-card').style.display = 'none';
+    document.getElementById('table-card').scrollIntoView({ behavior: 'smooth' });
+}
 
-    while (i < data.length) {
-        const rowA = data[i] || [];
-        const siraRaw = String(rowA[0] || '').trim();
+/* ─── Hücre → metin ─────────────────────────────────────────── */
+// Excel'de tarih hücresi Date nesnesi olarak gelir; GG/AA/YYYY metnine çevrilir
+function cellToStr(v) {
+    if (v === null || v === undefined) return '';
+    if (v instanceof Date) {
+        if (isNaN(v.getTime())) return '';
+        return `${String(v.getDate()).padStart(2, '0')}/${String(v.getMonth() + 1).padStart(2, '0')}/${v.getFullYear()}`;
+    }
+    return String(v);
+}
 
-        // Satır A değilse geç
-        if (!siraRaw || isNaN(parseInt(siraRaw))) { i++; continue; }
-
-        const rowB = data[i + 1] || [];
-        const rowC = data[i + 2] || [];
-
-        const sira       = parseInt(siraRaw);
-        const cinsiyet   = String(rowA[1] || '').trim().toUpperCase(); // E / K
-        const rel        = String(rowA[2] || '').trim();
-        const adi        = String(rowA[3] || '').trim();
-        const soyadiRaw  = String(rowA[4] || '').trim();
-        const soyadi     = soyadiRaw === '-' ? '' : soyadiRaw;
-        const babaAdiRaw = String(rowA[5] || '').trim();
-        const babaAdi    = babaAdiRaw === '-' ? '' : babaAdiRaw;
-        const anaAdiRaw  = String(rowA[6] || '').trim();
-        const anaAdi     = anaAdiRaw === '-' ? '' : anaAdiRaw;
-
-        // Doğum yeri: col7=doğum ilçesi/şehri (A), col8=İl (A), İlçe (B), Mahalle (C)
-        const dogumSehir = String(rowA[7] || '').trim();                     // YEŞİLHİSAR / MELİKGAZİ
-        const il         = String(rowA[8] || '').replace(/\/$/, '').trim();   // Kayseri
-        const mahalle    = String(rowC[8] || '').trim();                      // KELER MAHALLESİ
-
-        // Tarihler — cellDates:true ile Date nesnesi veya metin string gelebilir
-        const dogumTarihi = cellToDateStr(rowB[7]);   // "01/07/1841" (metin) veya Date(1907,9,24)
-        const olumTarihi  = cellToDateStr(rowB[11]);  // Date veya "-" (vefat tarihi bilinmiyor)
-
-        // Durum ve medeni hal
-        const durumRaw  = String(rowA[11] || '').trim();
-        const medeniRaw = String(rowA[10] || '').trim();
-
-        const status    = /ölüm|olüm|vefat/i.test(durumRaw) ? 'ölüm' : 'sağ';
-        const medeniHal = normMedi(medeniRaw);
-
-        // Doğum yeri metni: Mahalle, Şehir, İl, Türkiye
-        const birthPlace = [mahalle, dogumSehir, il, 'Türkiye']
-            .filter(s => s && s !== '-').join(', ');
-
-        // Ölüm tarihi: '-' ise veya boşsa tarih bilinmiyor ama vefat etmiş
-        const deathDate = (olumTarihi && olumTarihi !== '-') ? olumTarihi : '';
-
-        result.push({
-            sira, cinsiyet, relationship: rel,
-            givn: adi, surn: soyadi,
-            babaAdi, anaAdi,
-            birthDate: dogumTarihi, birthPlace,
-            medeniHal, status, deathDate,
-            diedUnknownDate: status === 'ölüm' && !deathDate,
+// HTML tablosu → satır/sütun ızgarası. rowspan/colspan açılır; tekrar eden hücreler boş bırakılır
+function tableToGrid(table) {
+    const grid = [];
+    [...table.rows].forEach((tr, r) => {
+        grid[r] = grid[r] || [];
+        let c = 0;
+        [...tr.cells].forEach(td => {
+            while (grid[r][c] !== undefined) c++;
+            const el = td.cloneNode(true);
+            el.querySelectorAll('br').forEach(b => b.replaceWith('\n'));
+            el.querySelectorAll('p,div,li').forEach(b => b.append('\n'));
+            const txt = el.textContent.replace(/ /g, ' ');
+            const rs = +td.rowSpan || 1, cs = +td.colSpan || 1;
+            for (let i = 0; i < rs; i++) for (let j = 0; j < cs; j++) {
+                grid[r + i] = grid[r + i] || [];
+                grid[r + i][c + j] = (i === 0 && j === 0) ? txt : '';
+            }
+            c += cs;
         });
+    });
+    return grid.map(row => [...row].map(x => x || ''));
+}
 
-        i += 3;
+// Word (.docx) tablosu: her paragraf ayrı satır
+function docxToGrid(xml) {
+    const doc = new DOMParser().parseFromString(xml, 'application/xml');
+    const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+    const tables = [...doc.getElementsByTagNameNS(W, 'tbl')];
+    const grid = [];
+    tables.forEach(tbl => {
+        [...tbl.getElementsByTagNameNS(W, 'tr')].forEach(tr => {
+            const row = [];
+            [...tr.childNodes].filter(n => n.localName === 'tc').forEach(tc => {
+                // Hücre içinde satır sonu (w:br) da paragraf gibi ayrı satır sayılır
+                const paras = [...tc.getElementsByTagNameNS(W, 'p')].map(p => {
+                    let s = '';
+                    p.querySelectorAll('*').forEach(el => {
+                        if (el.namespaceURI !== W) return;
+                        if (el.localName === 't') s += el.textContent;
+                        else if (el.localName === 'br' || el.localName === 'cr') s += '\n';
+                        else if (el.localName === 'tab') s += ' ';
+                    });
+                    return s;
+                });
+                const span = tc.getElementsByTagNameNS(W, 'gridSpan')[0];
+                row.push(paras.join('\n'));
+                for (let i = 1; i < (span ? +span.getAttributeNS(W, 'val') || 1 : 1); i++) row.push('');
+            });
+            grid.push(row);
+        });
+    });
+    return grid;
+}
+
+// .docx bir ZIP arşividir — yalnızca istenen dosya açılır (tarayıcının kendi sıkıştırma çözücüsüyle)
+async function unzipEntry(u8, name) {
+    const dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
+    let eocd = -1;
+    for (let i = u8.length - 22; i >= Math.max(0, u8.length - 66000); i--) if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+    if (eocd < 0) throw new Error('Geçerli bir Word dosyası değil');
+    let p = dv.getUint32(eocd + 16, true);
+    const n = dv.getUint16(eocd + 10, true);
+    for (let k = 0; k < n; k++) {
+        const method = dv.getUint16(p + 10, true), csize = dv.getUint32(p + 20, true);
+        const fnl = dv.getUint16(p + 28, true), exl = dv.getUint16(p + 30, true), cml = dv.getUint16(p + 32, true);
+        const off = dv.getUint32(p + 42, true);
+        const fn = new TextDecoder().decode(u8.subarray(p + 46, p + 46 + fnl));
+        if (fn === name) {
+            const lfn = dv.getUint16(off + 26, true), lex = dv.getUint16(off + 28, true);
+            const data = u8.subarray(off + 30 + lfn + lex, off + 30 + lfn + lex + csize);
+            if (method === 0) return new TextDecoder().decode(data);
+            const ds = new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+            return await new Response(ds).text();
+        }
+        p += 46 + fnl + exl + cml;
     }
-    return result;
+    throw new Error('Word belgesinde metin bulunamadı');
+}
+
+/* ─── Izgara → kişiler ──────────────────────────────────────── */
+// Sütunlar: 0 Sıra · 1 C · 2 Yakınlık · 3 Adı · 4 Soyadı · 5 Baba Adı · 6 Ana Adı ·
+// 7 Doğum Yeri ve Tarihi · 8 İl-İlçe-Mahalle/Köy · 9 Cilt-Hane-Birey · 10 Medeni Hali · 11 Durumu
+// Bir kişinin bilgisi birden çok satıra (Excel) ya da hücre içinde birden çok paragrafa (Word/web) yayılabilir.
+function gridToPersons(grid) {
+    const out = [];
+    let cur = null;
+    const lines = s => String(s || '').split(/\n/).map(x => x.replace(/\s+/g, ' ').trim()).filter(Boolean);
+    for (const row of grid) {
+        if (!row || !row.length) continue;
+        const first = String(row[0] || '').trim();
+        if (/^\d+$/.test(first)) {
+            cur = { cells: Array.from({ length: 12 }, () => []) };
+            out.push(cur);
+        } else if (!cur || first) {
+            continue; // başlık ya da açıklama satırı
+        } else if (row.some((v, i) => String(v || '').trim() && ![2, 7, 8, 11].includes(i))) {
+            // Devam satırlarında yalnızca yakınlık, doğum, nüfus kaydı ve durum sütunları dolu olur;
+            // başka sütun doluysa tablo bitmiştir (ör. altındaki açıklamalar)
+            cur = null; continue;
+        }
+        for (let c = 0; c < 12; c++) cur.cells[c].push(...lines(row[c]));
+    }
+    return out.map(({ cells: c }) => {
+        const dash = v => (v && v !== '-' ? v : '');
+        const isDate = s => /^\d{1,2}[./-]\d{1,2}[./-]\d{4}$/.test(s);
+        const dYer = c[7].find(s => !isDate(s)) || '';
+        const dTar = c[7].find(isDate) || '';
+        const durum = c[11][0] || '';
+        const olum = c[11].slice(1).find(isDate) || '';
+        const [cilt, hane, birey] = (c[9].join('') || '').split('-').map(s => s.trim());
+        return {
+            sira: +c[0][0],
+            cinsiyet: /^k/i.test(c[1][0] || '') ? 'K' : 'E',
+            relationship: c[2].join(' ').replace(/\s+/g, ' ').trim(),
+            givn: c[3].join(' '), surn: dash(c[4].join(' ')),
+            babaAdi: dash(c[5].join(' ')), anaAdi: dash(c[6].join(' ')),
+            birthPlace: dYer, birthDate: dTar,
+            il: (c[8][0] || '').replace(/\/$/, ''), ilce: (c[8][1] || '').replace(/\/$/, ''), mahalle: c[8].slice(2).join(' '),
+            cilt: cilt || '', hane: hane || '', birey: birey || '',
+            medeniHal: normMedi(c[10][0]),
+            status: /ölüm|olum|vefat/i.test(durum) ? 'ölüm' : 'sağ',
+            deathDate: olum,
+        };
+    }).filter(p => p.givn || p.surn);
 }
 
 function normMedi(s) {
-    const l = (s || '').toLowerCase().replace('â','a').replace('ı','i');
-    if (l === 'dul') return 'dul';
-    if (l === 'evli') return 'evli';
+    const l = (s || '').toLocaleLowerCase(TR);
+    if (l.startsWith('dul')) return 'dul';
+    if (l.startsWith('evli')) return 'evli';
     if (l.startsWith('bek')) return 'bekar';
+    if (l.startsWith('boş')) return 'boşanmış';
     return '';
 }
 
-/* ─── Date helpers ───────────────────────────────────────────── */
+/* ─── Yardımcılar ───────────────────────────────────────────── */
 const GED_MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+const titleCase = s => String(s || '').toLocaleLowerCase(TR).replace(/(^|[\s\-'])(\S)/g, (m, a, b) => a + b.toLocaleUpperCase(TR));
+const fold = s => String(s || '').toLocaleUpperCase(TR).replace(/\s+/g, '');
 
-function trDate(s) {
-    if (!s || s === '-') return '';
-    s = String(s).trim();
-    // Hem / hem . ayracını destekle: DD/MM/YYYY veya D.MM.YYYY
-    const m = s.match(/^(\d{1,2})[\/.](\d{1,2})[\/.](\d{4})$/);
-    if (!m) return s;
-    const d = parseInt(m[1]), mo = parseInt(m[2]), y = parseInt(m[3]);
-    
-    // NVI yıl-temelli yer tutucu: gün=1, ay=7, eski yıl → sadece yıl çıkar
+// GG/AA/YYYY → GEDCOM tarihi. NVİ, günü-ayı bilinmeyen eski doğumları 01/07/YYYY yazar → yalnızca yıl
+function gedDate(s) {
+    const m = String(s || '').trim().match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
+    if (!m) return String(s || '').trim();
+    const d = +m[1], mo = +m[2], y = +m[3];
     if (d === 1 && mo === 7 && y < 1960) return String(y);
-    
-    // Soyağacı uygulamanızın okuyabilmesi için sayısal format döndür
-    return `${String(d).padStart(2, '0')}/${String(mo).padStart(2, '0')}/${y}`;
+    return `${d} ${GED_MONTHS[mo - 1]} ${y}`;
 }
 
-/* ─── Render editable table ──────────────────────────────────── */
+// "Babasının Annesinin Babası" → adımlar: F (baba), M (anne), C (çocuk; oğul/kız ise cinsiyetiyle), E (eş).
+// "Torunu" iki çocuk adımıdır (CC).
+function relTokens(rel) {
+    const words = String(rel || '').toLocaleLowerCase(TR).split(/\s+/).filter(Boolean);
+    const out = [];
+    for (const w of words) {
+        if (w === 'kendisi') continue;
+        if (w.startsWith('baba')) out.push({ t: 'F' });
+        else if (w.startsWith('anne') || /^ana(sı|sının)?$/.test(w)) out.push({ t: 'M' });
+        else if (w.startsWith('oğl') || w.startsWith('ogl')) out.push({ t: 'C', sex: 'M' });
+        else if (w.startsWith('kız') || w.startsWith('kiz')) out.push({ t: 'C', sex: 'F' });
+        else if (w.startsWith('çocu') || w.startsWith('cocu')) out.push({ t: 'C' });
+        else if (w.startsWith('torun')) out.push({ t: 'C' }, { t: 'C' });
+        else if (w.startsWith('eş') || w === 'esi') out.push({ t: 'E' });
+        else return null; // tanınmayan yakınlık
+    }
+    return out;
+}
+
+/* ─── Tablo ─────────────────────────────────────────────────── */
 function renderTable() {
     const tbody = document.getElementById('person-tbody');
     tbody.innerHTML = '';
-
-    const kendisi = persons.find(p => /kendisi/i.test(p.relationship));
-
+    const an = analyze(persons);
     document.getElementById('stat-row').innerHTML = `
         <div class="stat"><b>${persons.length}</b> kişi</div>
-        <div class="stat"><b>${persons.filter(p=>p.cinsiyet==='E').length}</b> erkek</div>
-        <div class="stat"><b>${persons.filter(p=>p.cinsiyet==='K').length}</b> kadın</div>
-        <div class="stat"><b>${persons.filter(p=>p.status==='ölüm').length}</b> vefat</div>
-        <div class="stat"><b>${persons.filter(p=>p.status!=='ölüm').length}</b> sağ</div>
-    `;
-
-    const warns = [];
-    if (!kendisi) warns.push('"Kendisi" satırı bulunamadı — aile bağlantıları kurulamayabilir.');
-    const emptyNames = persons.filter(p => !p.givn && !p.surn);
-    if (emptyNames.length) warns.push(`${emptyNames.length} kişinin adı boş — lütfen tablodan düzeltin.`);
-    document.getElementById('warn-box').innerHTML = warns.length
-        ? `<div class="warn">⚠️ ${warns.join('<br>⚠️ ')}</div>` : '';
+        <div class="stat"><b>${persons.filter(p => p.cinsiyet === 'E').length}</b> erkek</div>
+        <div class="stat"><b>${persons.filter(p => p.cinsiyet === 'K').length}</b> kadın</div>
+        <div class="stat"><b>${persons.filter(p => p.status === 'ölüm').length}</b> vefat</div>
+        <div class="stat"><b>${persons.filter(p => p.status === 'ölüm' && !p.deathDate).length}</b> vefat (tarihsiz)</div>`;
+    document.getElementById('warn-box').innerHTML = an.warns.length
+        ? `<div class="warn">⚠️ ${an.warns.map(escH).join('<br>⚠️ ')}</div>`
+        : '<div class="ok">✓ Yakınlıklar ve anne-baba adları birbiriyle tutarlı.</div>';
 
     persons.forEach((p, idx) => {
-        const isKendisi = /kendisi/i.test(p.relationship);
         const tr = document.createElement('tr');
-        if (isKendisi) tr.className = 'kendisi-row';
+        if (/kendisi/i.test(p.relationship)) tr.className = 'kendisi-row';
+        const kutuk = [p.il, p.ilce, p.mahalle].filter(Boolean).join(' / ') + (p.hane ? ` · ${p.cilt}-${p.hane}-${p.birey}` : '');
         tr.innerHTML = `
-            <td style="font-size:11px;color:var(--muted);white-space:nowrap">${p.sira}</td>
-            <td><span class="sex-${p.cinsiyet==='E'?'e':'k'}">${p.cinsiyet}</span></td>
-            <td class="rel-cell">${p.relationship || '-'}</td>
-            <td><input data-i="${idx}" data-f="givn"       value="${esc(p.givn)}"></td>
-            <td><input data-i="${idx}" data-f="surn"       value="${esc(p.surn)}"></td>
-            <td><input data-i="${idx}" data-f="babaAdi"    value="${esc(p.babaAdi)}"></td>
-            <td><input data-i="${idx}" data-f="anaAdi"     value="${esc(p.anaAdi)}"></td>
-            <td><input data-i="${idx}" data-f="birthDate"  value="${esc(p.birthDate)}" style="min-width:90px"></td>
-            <td><input data-i="${idx}" data-f="birthPlace" value="${esc(p.birthPlace)}" style="min-width:140px"></td>
+            <td style="font-size:11px;color:var(--muted)">${p.sira}</td>
+            <td><span class="sex-${p.cinsiyet === 'E' ? 'e' : 'k'}">${p.cinsiyet}</span></td>
+            <td class="rel-cell">${escH(p.relationship || '-')}</td>
+            <td><input data-i="${idx}" data-f="givn" value="${esc(p.givn)}"></td>
+            <td><input data-i="${idx}" data-f="surn" value="${esc(p.surn)}"></td>
+            <td><input data-i="${idx}" data-f="babaAdi" value="${esc(p.babaAdi)}"></td>
+            <td><input data-i="${idx}" data-f="anaAdi" value="${esc(p.anaAdi)}"></td>
+            <td><input data-i="${idx}" data-f="birthDate" value="${esc(p.birthDate)}" style="min-width:90px"></td>
+            <td><input data-i="${idx}" data-f="birthPlace" value="${esc(p.birthPlace)}" style="min-width:110px"></td>
+            <td class="kutuk">${escH(kutuk)}</td>
             <td>
-                <select data-i="${idx}" data-f="medeniHal" style="min-width:65px">
-                    <option value=""${!p.medeniHal?' selected':''}>-</option>
-                    <option value="evli"${p.medeniHal==='evli'?' selected':''}>Evli</option>
-                    <option value="dul"${p.medeniHal==='dul'?' selected':''}>Dul</option>
-                    <option value="bekar"${p.medeniHal==='bekar'?' selected':''}>Bekâr</option>
+                <select data-i="${idx}" data-f="medeniHal" style="min-width:70px">
+                    ${['', 'evli', 'dul', 'bekar', 'boşanmış'].map(v => `<option value="${v}"${p.medeniHal === v ? ' selected' : ''}>${v ? titleCase(v).replace('Bekar', 'Bekâr') : '-'}</option>`).join('')}
                 </select>
             </td>
-            <td style="white-space:nowrap;font-size:11px">${p.status==='sağ'?'🟢 Sağ':'⚫ Ölüm'}</td>
-            <td><input data-i="${idx}" data-f="deathDate"  value="${esc(p.deathDate)}" style="min-width:90px"></td>
-        `;
+            <td style="white-space:nowrap;font-size:11px">${p.status === 'sağ' ? '🟢 Sağ' : '⚫ Ölüm'}</td>
+            <td><input data-i="${idx}" data-f="deathDate" value="${esc(p.deathDate)}" placeholder="${p.status === 'ölüm' ? 'bilinmiyor' : ''}" style="min-width:90px"></td>`;
         tbody.appendChild(tr);
     });
-
     tbody.querySelectorAll('input, select').forEach(el => {
-        el.addEventListener('change', () => {
-            persons[+el.dataset.i][el.dataset.f] = el.value;
-        });
+        el.addEventListener('change', () => { persons[+el.dataset.i][el.dataset.f] = el.value.trim(); });
     });
 }
 
-function esc(s) { return (s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;'); }
+function esc(s) { return String(s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
+function escH(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
-/* ─── Relationship path parser ───────────────────────────────── */
-function parseRel(rel) {
-    const s = (rel || '').toLowerCase()
-        .replace(/babasının/g, 'BABA ')
-        .replace(/annesinin/g, 'ANNE ')
-        .replace(/babası$/i,  'BABASI')
-        .replace(/annesi$/i,  'ANNESI')
-        .replace(/kendisi/i,  'KENDISI')
-        .replace(/oğlu/i,     'OGLU')
-        .replace(/kızı/i,     'KIZI')
-        .replace(/eşi/i,      'ESI')
-        .trim();
-    const toks = s.split(/\s+/);
-    const path = [];
-    let finalRole = '';
-    for (const t of toks) {
-        if (t === 'BABA') path.push('baba');
-        else if (t === 'ANNE') path.push('anne');
-        else if (['BABASI','ANNESI','KENDISI','OGLU','KIZI','ESI'].includes(t)) finalRole = t.toLowerCase();
-    }
-    return { path, finalRole };
+/* ─── Aile ilişkileri ───────────────────────────────────────── */
+// Atalar yakınlıklarından tek anlamlı bir yol alır ("" = kendisi, "FM" = babasının annesi);
+// ebeveynleri yol + F / M'dir. Çocuk ve torunlar ise birden çok olabildiğinden ebeveynleri,
+// bir kuşak yukarıdaki adaylar arasından belgedeki baba/ana adıyla eşleştirilerek bulunur.
+// Belgede olmayan ebeveynler (ör. çocuğun annesi, en üst kuşağın anne-babası) yalnızca adıyla eklenir.
+function analyze(list) {
+    const warns = [], nodes = [], anc = {};
+    const lbl = p => `${p.sira}. ${titleCase(p.givn)}`;
+    list.forEach(p => {
+        const toks = relTokens(p.relationship);
+        if (!toks) { warns.push(`${lbl(p)}: yakınlık anlaşılamadı ("${p.relationship}") — ağaca bağlanmayacak.`); return; }
+        const node = { p, toks, path: toks.map(t => t.t).join(''), sex: p.cinsiyet === 'E' ? 'M' : 'F', given: p.givn };
+        nodes.push(node);
+        if (/^[FME]*$/.test(node.path) && !/E./.test(node.path)) {
+            if (anc[node.path]) warns.push(`${lbl(p)}: "${p.relationship}" yakınlığı iki kez geçiyor.`);
+            else anc[node.path] = node;
+        }
+    });
+    const self = anc[''];
+    if (!self) warns.push('"Kendisi" satırı bulunamadı — kişiler birbirine bağlanamaz.');
+    const ghost = (key, name, sex, child) => name ? { ghost: true, key: key + '#' + fold(name), name, sex, child } : null;
+    // Bir kişinin eşi: kendisinin eşi belgede varsa o, yoksa çocuğun belgedeki anne/baba adıyla
+    const spouseOf = (par, name, child) => {
+        const e = anc['E'];
+        if (par === self && e && (!name || fold(e.given) === fold(name))) return e;
+        return ghost('sp:' + par.p.sira, name, par.sex === 'M' ? 'F' : 'M', child);
+    };
+    nodes.forEach(n => {
+        const p = n.p;
+        if (n.path === '' || /^[FM]+$/.test(n.path) || n.path === 'E') {
+            n.father = anc[n.path + 'F'] || ghost(n.path + 'F', p.babaAdi, 'M', n);
+            n.mother = anc[n.path + 'M'] || ghost(n.path + 'M', p.anaAdi, 'F', n);
+            if (n.path === 'E') { n.father = ghost('EF', p.babaAdi, 'M', n); n.mother = ghost('EM', p.anaAdi, 'F', n); }
+            return;
+        }
+        if (n.path.endsWith('C')) {
+            const pp = n.path.slice(0, -1), need = n.toks.length > 1 ? n.toks[n.toks.length - 2].sex : null;
+            let cands = pp === '' ? (self ? [self] : []) : nodes.filter(c => c.path === pp && (!need || c.sex === need));
+            const byName = cands.filter(c => fold(c.given) === fold(c.sex === 'M' ? p.babaAdi : p.anaAdi));
+            const par = byName[0] || (cands.length === 1 ? cands[0] : null);
+            if (!par) {
+                warns.push(`${lbl(p)}: hangi ${pp === 'C' ? 'çocuğun' : 'kişinin'} çocuğu olduğu bulunamadı (baba adı ${titleCase(p.babaAdi) || '—'}, ana adı ${titleCase(p.anaAdi) || '—'}).`);
+                return;
+            }
+            if (par.sex === 'M') { n.father = par; n.mother = spouseOf(par, p.anaAdi, n); }
+            else { n.mother = par; n.father = spouseOf(par, p.babaAdi, n); }
+            return;
+        }
+        warns.push(`${lbl(p)}: "${p.relationship}" yakınlığı ağaca bağlanamıyor.`);
+    });
+    // Belgedeki anne-babanın adı, kişinin baba/ana adı sütunuyla uyuşuyor mu?
+    nodes.forEach(n => {
+        [[n.father, n.p.babaAdi, 'baba', 'babası'], [n.mother, n.p.anaAdi, 'ana', 'annesi']].forEach(([q, ad, l, l2]) => {
+            if (q && !q.ghost && ad && fold(q.given) !== fold(ad))
+                warns.push(`${lbl(n.p)}: ${l} adı "${titleCase(ad)}" yazıyor, ama belgedeki ${l2} "${titleCase(q.given)}".`);
+        });
+    });
+    return { nodes, warns };
 }
 
-/* ─── GEDCOM builder ─────────────────────────────────────────── */
+/* ─── GEDCOM ────────────────────────────────────────────────── */
 function buildAndPreviewGedcom() {
     gedcomText = buildGedcom();
     if (!gedcomText) return;
@@ -376,177 +516,134 @@ function buildAndPreviewGedcom() {
 }
 
 function buildGedcom() {
-    const kendiIdx = persons.findIndex(p => /kendisi/i.test(p.relationship));
-    if (kendiIdx === -1) {
-        document.getElementById('parse-error').textContent = '"Kendisi" satırı bulunamadı.';
-        document.getElementById('table-card').scrollIntoView({ behavior: 'smooth' });
-        return '';
-    }
+    const opt = {
+        tc: document.getElementById('o-case').checked,
+        ghost: document.getElementById('o-ghost').checked,
+        maiden: document.getElementById('o-maiden').checked,
+        note: document.getElementById('o-note').checked,
+    };
+    const nm = s => opt.tc ? titleCase(s) : String(s || '').trim();
+    const { nodes } = analyze(persons);
+    if (!nodes.some(x => x.path === '')) { setMsg('', '"Kendisi" satırı bulunamadı.'); return ''; }
 
-    const iId = (sira) => `@I${String(sira).padStart(3,'0')}@`;
-
-    const families = {};
-    const famc = {};
+    // Düğümler: belgedeki kişiler + yalnızca adı bilinen anne-babalar (aynı anahtar → tek kişi)
+    let n = 0;
+    nodes.forEach(x => { x.id = `@I${++n}@`; });
+    const ghostOf = {};
+    const famOfChild = {};
+    const real = g => {
+        if (!g) return null;
+        if (!g.ghost) return g;
+        if (!opt.ghost) return null;
+        if (!ghostOf[g.key]) {
+            const c = g.child.p;
+            const old = c.status === 'ölüm' || (+(String(c.birthDate).slice(-4)) || 9999) < new Date().getFullYear() - 90;
+            ghostOf[g.key] = { id: `@I${++n}@`, ghost: true, givn: g.name, sex: g.sex, dead: old, of: g.child };
+        }
+        return ghostOf[g.key];
+    };
     const fams = {};
-
-    function ensureFam(key) {
-        if (!families[key]) families[key] = { husb: '', wife: '', chil: new Set() };
-        return families[key];
-    }
-    function addFams(sira, key) {
-        if (!fams[sira]) fams[sira] = new Set();
-        fams[sira].add(key);
-    }
-
-    const kendi = persons[kendiIdx];
-
-    persons.forEach(p => {
-        const { path, finalRole } = parseRel(p.relationship);
-
-        if (finalRole === 'kendisi') {
-            const famKey = 'famc_kendi';
-            famc[p.sira] = famKey;
-            ensureFam(famKey).chil.add(iId(p.sira));
-            return;
-        }
-
-        if (finalRole === 'oglu' || finalRole === 'kizi') {
-            const famKey = 'fams_kendi';
-            famc[p.sira] = famKey;
-            ensureFam(famKey).chil.add(iId(p.sira));
-            const fam = ensureFam(famKey);
-            if (kendi.cinsiyet === 'E') fam.husb = iId(kendi.sira);
-            else fam.wife = iId(kendi.sira);
-            addFams(kendi.sira, famKey);
-            return;
-        }
-
-        if (finalRole === 'esi') {
-            const famKey = 'fams_kendi';
-            const fam = ensureFam(famKey);
-            if (p.cinsiyet === 'E') fam.husb = iId(p.sira);
-            else fam.wife = iId(p.sira);
-            addFams(p.sira, famKey);
-            return;
-        }
-
-        if (finalRole === 'babasi' || finalRole === 'annesi') {
-            const famKey = path.join('-') || 'famc_kendi';
-            const fam = ensureFam(famKey);
-            if (finalRole === 'babasi') fam.husb = iId(p.sira);
-            else fam.wife = iId(p.sira);
-            addFams(p.sira, famKey);
-
-            const myFamcKey = [...path, finalRole].join('_');
-            famc[p.sira] = myFamcKey;
-            ensureFam(myFamcKey).chil.add(iId(p.sira));
-        }
+    nodes.forEach(c => {
+        const f = real(c.father), m = real(c.mother);
+        c.fatherNode = f;
+        if (!f && !m) return;
+        const key = (f ? f.id : '-') + (m ? m.id : '-');
+        fams[key] = fams[key] || { husb: f, wife: m, chil: [] };
+        fams[key].chil.push(c);
+        famOfChild[c.id] = key;
     });
+    const famIds = {};
+    Object.keys(fams).forEach((k, i) => { famIds[k] = `@F${i + 1}@`; });
+    const famsOf = id => Object.entries(fams).filter(([, F]) => (F.husb && F.husb.id === id) || (F.wife && F.wife.id === id)).map(([k]) => famIds[k]);
 
-    // Ghost parents (Baba/Ana Adı var ama belgede kişi yok)
-    let indGed = '';
-    let ghostCounter = 500;
-    const ghostIds = {};
+    let ged = '';
+    const line = s => { ged += s + '\n'; };
+    // Uzun notlar 2 CONT ile satırlara bölünür
+    const note = (txt) => {
+        const ls = txt.split('\n');
+        line(`1 NOTE ${ls[0]}`);
+        ls.slice(1).forEach(l => line(`2 CONT ${l}`));
+    };
 
-    function getOrCreateGhost(name, sex, famKey, role) {
-        const key = `${name}:${sex}:${famKey}`;
-        if (ghostIds[key]) return ghostIds[key];
-        const gId = `@I${ghostCounter++}@`;
-        ghostIds[key] = gId;
-        const gFam = ensureFam(famKey);
-        if (role === 'husb') gFam.husb = gId;
-        else gFam.wife = gId;
-        indGed += `0 ${gId} INDI\n1 NAME ${name} //\n2 GIVN ${name}\n1 SEX ${sex}\n1 NOTE eDevlet Baba/Ana Adı kaydından — tam bilgisi belgede yok.\n1 FAMS ${famGedId[famKey]}\n`;
-        return gId;
-    }
-
-    // Ebeveyn adı olan ama famc bağlantısı kurulmamış kişiler (örn. eş) için köken ailesi oluştur
-    persons.forEach(p => {
-        if (famc[p.sira] === undefined && (p.babaAdi || p.anaAdi)) {
-            const originKey = `origin_${p.sira}`;
-            famc[p.sira] = originKey;
-            ensureFam(originKey).chil.add(iId(p.sira));
+    nodes.forEach(node => {
+        const p = node.p, g = nm(p.givn), s = nm(p.surn);
+        line(`0 ${node.id} INDI`);
+        line(`1 NAME ${g} /${s}/`);
+        if (g) line(`2 GIVN ${g}`);
+        if (s) line(`2 SURN ${s}`);
+        // Kızlık soyadı: babası belgedeyse ve soyadı farklıysa ikinci ad kaydı (doğum adı)
+        if (opt.maiden && p.cinsiyet === 'K') {
+            const fat = node.fatherNode;
+            const ms = fat && fat.p && fat.p.surn ? nm(fat.p.surn) : '';
+            if (ms && fold(ms) !== fold(s)) { line(`1 NAME ${g} /${ms}/`); line('2 TYPE birth'); }
         }
-    });
-
-    // GEDCOM aile ID'leri
-    const famGedId = {};
-    let famCounter = 1;
-    Object.keys(families).forEach(k => { famGedId[k] = `@F${famCounter++}@`; });
-
-    // Bireyler
-    persons.forEach(p => {
-        const id = iId(p.sira);
-        const name = `${p.givn}${p.surn ? ' /' + p.surn + '/' : ' //'}`;
-        indGed += `0 ${id} INDI\n`;
-        indGed += `1 NAME ${name}\n`;
-        if (p.givn) indGed += `2 GIVN ${p.givn}\n`;
-        if (p.surn) indGed += `2 SURN ${p.surn}\n`;
-        indGed += `1 SEX ${p.cinsiyet === 'E' ? 'M' : 'F'}\n`;
-
-        const bd = trDate(p.birthDate);
-        if (bd || p.birthPlace) {
-            indGed += `1 BIRT\n`;
-            if (bd) indGed += `2 DATE ${bd}\n`;
-            if (p.birthPlace) indGed += `2 PLAC ${p.birthPlace}\n`;
-        }
-
+        line(`1 SEX ${p.cinsiyet === 'E' ? 'M' : 'F'}`);
+        const bd = gedDate(p.birthDate), bp = birthPlace(p, nm);
+        if (bd || bp) { line('1 BIRT'); if (bd) line(`2 DATE ${bd}`); if (bp) line(`2 PLAC ${bp}`); }
         if (p.status === 'ölüm') {
-            const dd = trDate(p.deathDate);
-            if (dd) {
-                indGed += `1 DEAT\n2 DATE ${dd}\n`;
-            } else {
-                indGed += `1 DEAT Y\n`;   // tarih bilinmiyor ama vefat etmiş
-            }
+            const dd = gedDate(p.deathDate);
+            if (dd) { line('1 DEAT'); line(`2 DATE ${dd}`); } else line('1 DEAT Y'); // vefat etmiş, tarihi bilinmiyor
         }
-
-        if (p.medeniHal) indGed += `1 _MSTAT ${p.medeniHal}\n`;
-
-        const myFamcKey = famc[p.sira];
-        if (myFamcKey && famGedId[myFamcKey]) {
-            indGed += `1 FAMC ${famGedId[myFamcKey]}\n`;
-            const fam = families[myFamcKey];
-            if (p.babaAdi && !fam.husb) getOrCreateGhost(p.babaAdi, 'M', myFamcKey, 'husb');
-            if (p.anaAdi  && !fam.wife) getOrCreateGhost(p.anaAdi,  'F', myFamcKey, 'wife');
+        const parts = [`e-Devlet yakınlık: ${p.relationship}`];
+        if (opt.note) {
+            const k = [p.il, p.ilce, p.mahalle].filter(Boolean).map(nm).join(' / ');
+            if (k) parts.push(`Nüfusa kayıtlı: ${k}` + (p.hane ? ` (cilt ${p.cilt}, hane ${p.hane}, birey ${p.birey})` : ''));
+            if (p.medeniHal) parts.push(`Medeni hâli: ${titleCase(p.medeniHal).replace('Bekar', 'Bekâr')}`);
         }
-
-        if (fams[p.sira]) {
-            fams[p.sira].forEach(fk => {
-                if (famGedId[fk]) indGed += `1 FAMS ${famGedId[fk]}\n`;
-            });
-        }
+        note(parts.join('\n'));
+        line(`1 _YAKINLIK ${p.relationship}`);
+        if (famOfChild[node.id]) line(`1 FAMC ${famIds[famOfChild[node.id]]}`);
+        famsOf(node.id).forEach(f => line(`1 FAMS ${f}`));
     });
 
-    // Aileler
-    let famGed = '';
-    Object.entries(families).forEach(([key, fam]) => {
-        if (!famGedId[key]) return;
-        if (!fam.husb && !fam.wife && fam.chil.size === 0) return;
-        famGed += `0 ${famGedId[key]} FAM\n`;
-        if (fam.husb) famGed += `1 HUSB ${fam.husb}\n`;
-        if (fam.wife) famGed += `1 WIFE ${fam.wife}\n`;
-        fam.chil.forEach(c => { famGed += `1 CHIL ${c}\n`; });
+    Object.values(ghostOf).forEach(gh => {
+        const g = nm(gh.givn);
+        line(`0 ${gh.id} INDI`);
+        line(`1 NAME ${g} //`);
+        line(`2 GIVN ${g}`);
+        line(`1 SEX ${gh.sex}`);
+        if (gh.dead) line('1 DEAT Y');
+        note(`Yalnızca adı biliniyor: e-Devlet'te ${nm(gh.of.p.givn)} ${nm(gh.of.p.surn)} kişisinin ${gh.sex === 'M' ? 'baba' : 'ana'} adı.`);
+        famsOf(gh.id).forEach(f => line(`1 FAMS ${f}`));
+    });
+
+    Object.entries(fams).forEach(([k, F]) => {
+        line(`0 ${famIds[k]} FAM`);
+        if (F.husb) line(`1 HUSB ${F.husb.id}`);
+        if (F.wife) line(`1 WIFE ${F.wife.id}`);
+        F.chil.forEach(c => line(`1 CHIL ${c.id}`));
     });
 
     const today = new Date();
-    const dateStr = `${today.getDate()} ${GED_MONTHS[today.getMonth()]} ${today.getFullYear()}`;
-    const note = 'eDevlet NVI Alt-Üst Soy Belgesi. 01/07/YYYY doğum tarihleri yıl-bilgisi tabanlıdır.';
-    return `0 HEAD\n1 SOUR eDevlet-XLSX-Donusturucu\n2 NAME Alt-Ust Soy Belgesi\n1 DATE ${dateStr}\n1 GEDC\n2 VERS 5.5.1\n1 CHAR UTF-8\n1 NOTE ${note}\n`
-         + indGed + famGed + '0 TRLR\n';
+    document.getElementById('ged-stats').innerHTML = `
+        <div class="stat"><b>${nodes.length}</b> belgedeki kişi</div>
+        <div class="stat"><b>${Object.keys(ghostOf).length}</b> yalnızca adı bilinen ebeveyn</div>
+        <div class="stat"><b>${Object.keys(fams).length}</b> aile</div>`;
+    return `0 HEAD\n1 SOUR EDEVLET-GED\n2 NAME e-Devlet Soyagaci -> GEDCOM\n2 VERS 2.0\n1 DATE ${today.getDate()} ${GED_MONTHS[today.getMonth()]} ${today.getFullYear()}\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n1 NOTE NVI Alt-Ust Soy Bilgisi. Gunu-ayi bilinmeyen eski dogumlar yalnizca yil olarak yazildi.\n`
+        + ged + '0 TRLR\n';
+}
+
+// Doğum yeri sütununda yalnızca ilçe/şehir adı vardır; nüfus kaydıyla aynı ilçeyse il de eklenir
+function birthPlace(p, nm) {
+    const b = nm(p.birthPlace);
+    if (!b) return '';
+    if (p.il && fold(p.ilce) === fold(p.birthPlace)) return `${b}, ${nm(p.il)}`;
+    if (p.il && fold(p.il) === fold(p.birthPlace)) return b;
+    return b;
 }
 
 function downloadGedcom() {
     if (!gedcomText) return;
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([gedcomText], { type: 'text/plain;charset=utf-8' }));
-    a.download = 'edevlet-soy.ged';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    const k = persons.find(p => /kendisi/i.test(p.relationship));
+    a.download = 'edevlet-soy' + (k ? '-' + titleCase(k.givn).replace(/\s+/g, '-') : '') + '.ged';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
 }
 
 function clearAll() {
-    document.getElementById('loaded-name').textContent = '';
-    document.getElementById('parse-error').textContent = '';
-    document.getElementById('file-input').value = '';
+    setMsg('', '');
     document.getElementById('table-card').style.display = 'none';
     document.getElementById('gedcom-card').style.display = 'none';
     persons = []; gedcomText = '';
